@@ -16,7 +16,8 @@ import 'episode_grid.dart';
 import 'playback_handle.dart';
 import 'player_surface.dart';
 
-const _panelWidth = 360.0;
+const _minPanelWidth = 220.0;
+const _maxPanelWidth = 520.0;
 
 class PlayerPage extends StatefulWidget {
   const PlayerPage({
@@ -43,6 +44,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   bool _windowFullscreen = false;
   bool _seekHeld = false;
   bool _selecting = false;
+  bool _panelOpen = true;
+  double _panelWidth = 360;
 
   PlaybackSession get _playback => widget.handle.session;
   Drama get _drama => _playback.detail.drama;
@@ -78,7 +81,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       AppScope.of(context).repository.supportsDownloads &&
       widget.store.canDownload;
 
-  bool get _roomy => MediaQuery.sizeOf(context).width - 32 >= 840;
+  bool get _roomy => MediaQuery.sizeOf(context).width - 32 >= 700;
 
   Future<void> _setFullScreen(bool value) =>
       windowManager.setFullScreen(value).catchError((Object _) {});
@@ -101,6 +104,58 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     unawaited(widget.store.setPlayerWide(_wide).catchError((Object _) {}));
   }
 
+  Future<void> _togglePanel() async {
+    if (_roomy) {
+      setState(() => _panelOpen = !_panelOpen);
+    } else {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(context).height * .7,
+            child: ListenableBuilder(
+              listenable: _playback,
+              builder: (context, _) => _episodeList(),
+            ),
+          ),
+        ),
+      );
+    }
+    if (mounted) _focus.requestFocus();
+  }
+
+  Widget _resizeHandle(double maxWidth) => MouseRegion(
+    cursor: SystemMouseCursors.resizeLeftRight,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragUpdate: (details) => setState(() {
+        _panelWidth = (_panelWidth.clamp(_minPanelWidth, maxWidth) -
+                details.delta.dx)
+            .clamp(_minPanelWidth, maxWidth)
+            .toDouble();
+      }),
+      onDoubleTap: () => setState(() => _panelWidth = 360),
+      child: Tooltip(
+        message: '拖动调整选集宽度，双击恢复',
+        child: SizedBox(
+          width: 16,
+          child: Center(
+            child: Container(
+              width: 4,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
   bool get _filled => _fullscreen || _wide && !_selecting;
 
   void _back() {
@@ -117,6 +172,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
 
   void _startSelection() {
     setState(() {
+      _panelOpen = true;
       _selecting = true;
       _selected.clear();
     });
@@ -250,7 +306,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
         ),
       ),
     );
-    final panel = _roomy && (!_wide || _selecting);
+    final panel = _roomy && (_panelOpen || _selecting);
     return PopScope(
       canPop: !_fullscreen && !_selecting && !_wide,
       onPopInvokedWithResult: (didPop, _) {
@@ -274,18 +330,37 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                           Expanded(
                             child: Padding(
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(child: surface),
-                                  if (panel) ...[
-                                    const SizedBox(width: 16),
-                                    SizedBox(
-                                      width: _panelWidth,
-                                      child: _panel(),
-                                    ),
-                                  ],
-                                ],
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final maxPanelWidth =
+                                      (constraints.maxWidth - 336)
+                                          .clamp(_minPanelWidth, _maxPanelWidth)
+                                          .toDouble();
+                                  if (_selecting && !_roomy) {
+                                    return Column(
+                                      children: [
+                                        Expanded(child: surface),
+                                        const SizedBox(height: 8),
+                                        Expanded(child: _panel()),
+                                      ],
+                                    );
+                                  }
+                                  return Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(child: surface),
+                                      if (panel) ...[
+                                        _resizeHandle(maxPanelWidth),
+                                        SizedBox(
+                                          width: _panelWidth
+                                              .clamp(_minPanelWidth, maxPanelWidth)
+                                              .toDouble(),
+                                          child: _panel(),
+                                        ),
+                                      ],
+                                    ],
+                                  );
+                                },
                               ),
                             ),
                           ),
@@ -325,7 +400,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
               ),
             ),
             if (_selecting) ...[
-              Text(
+              if (_roomy) Text(
                 '已选 ${_selected.length} 集',
                 style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
               ),
@@ -348,6 +423,15 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                 label: const Text('下载'),
               ),
             ] else ...[
+              IconButton(
+                tooltip: _roomy && _panelOpen ? '收起选集' : '展开选集',
+                onPressed: () => unawaited(_togglePanel()),
+                icon: Icon(
+                  _roomy && _panelOpen
+                      ? Icons.chevron_right_rounded
+                      : Icons.format_list_numbered_rounded,
+                ),
+              ),
               FollowPill(
                 store: widget.store,
                 drama: _drama,
@@ -385,6 +469,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   Widget _episodeList() => EpisodeGrid(
     episodes: _episodes,
     current: _playback.index,
+    minCellWidth: 48,
     selecting: _selecting,
     selected: _selected,
     onSelectionChanged: () => setState(() {}),
