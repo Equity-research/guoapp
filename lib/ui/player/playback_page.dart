@@ -77,9 +77,10 @@ class _PlaybackPageState extends State<PlaybackPage> {
 
   @override
   Widget build(BuildContext context) {
-    final form = AppScope.formFactorOf(context);
+    final form = desktopPlatform && AppScope.of(context).formFactor == null
+        ? FormFactor.window
+        : AppScope.formFactorOf(context);
     if (desktopPlatform) {
-      final size = MediaQuery.sizeOf(context);
       return switch (form) {
         FormFactor.phone when _wideVideo => LandscapePlayerPage(
           store: widget.store,
@@ -90,9 +91,6 @@ class _PlaybackPageState extends State<PlaybackPage> {
           handle: widget.handle,
         ),
         FormFactor.pad => _padPage(context),
-        FormFactor.window
-            when _padFullscreen.value || size.width <= size.height =>
-          _padPage(context),
         FormFactor.window => PlayerPage(
           store: widget.store,
           handle: widget.handle,
