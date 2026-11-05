@@ -1,8 +1,11 @@
 name: Build personal Mac app
+
 on:
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
   macos:
     runs-on: macos-latest
@@ -33,6 +36,12 @@ jobs:
           fi
           python -m pip install dmgbuild Pillow
           flutter precache --macos
+      - name: Check player changes
+        run: |
+          flutter pub get --enforce-lockfile
+          dart format lib/main.dart lib/ui/player/player_page.dart lib/ui/player/playback_page.dart lib/ui/player/player_surface.dart lib/ui/player/episode_grid.dart
+          dart analyze --fatal-infos lib/main.dart lib/ui/player/player_page.dart lib/ui/player/playback_page.dart lib/ui/player/player_surface.dart lib/ui/player/episode_grid.dart
+          flutter test test/playback_session_test.dart --dart-define=DISABLE_REMOTE_IMAGES=true --dart-define=ALL_SOURCES=true
       - name: Build ZhenGuoJian
         run: python scripts/build_macos.py --all-sources
       - uses: actions/upload-artifact@v4
