@@ -215,6 +215,7 @@ class _EpisodeGridState extends State<EpisodeGrid> {
     builder: (context, constraints) {
       _gridWidth = constraints.maxWidth;
       _gridHeight = constraints.maxHeight;
+      final previousColumns = _columns;
       _columns = switch (widget.minCellWidth) {
         null => 5,
         final minimum => max(
@@ -223,6 +224,7 @@ class _EpisodeGridState extends State<EpisodeGrid> {
               .floor(),
         ),
       };
+      if (previousColumns != _columns) _revealed = -1;
       if (_revealed != widget.current) {
         final animate = _revealed >= 0;
         _revealed = widget.current;
