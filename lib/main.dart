@@ -29,10 +29,13 @@ Future<void> main() async {
       await windowManager.waitUntilReadyToShow(
         const WindowOptions(
           size: Size(1280, 800),
-          minimumSize: Size(960, 640),
+          minimumSize: Size(480, 320),
           center: true,
         ),
-        () async => windowManager.show(),
+        () async {
+          await windowManager.setResizable(true);
+          await windowManager.show();
+        },
       );
     } catch (_) {}
   }
