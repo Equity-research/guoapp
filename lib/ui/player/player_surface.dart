@@ -560,91 +560,97 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
     final state = _session.player.state;
     final playing = state.playing;
     final ready = _session.ready;
-    return Row(
-      children: [
-        _icon(
-          Icons.skip_previous_rounded,
-          '上一集',
-          _session.hasPrevious ? () => unawaited(_session.previous()) : null,
-        ),
-        _icon(
-          playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-          playing ? '暂停' : '播放',
-          ready ? _session.togglePlayback : null,
-          size: 48,
-          iconSize: 30,
-        ),
-        _icon(
-          Icons.skip_next_rounded,
-          '下一集',
-          _session.hasNext ? () => unawaited(_session.next()) : null,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          '${formatClock(Duration(milliseconds: position.round()))} / ${formatClock(state.duration)}',
-          maxLines: 1,
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.white.withValues(alpha: .86),
-            fontFeatures: const [FontFeature.tabularFigures()],
-          ),
-        ),
-        if (_session.danmakuSupported) ...[
-          const SizedBox(width: 4),
-          _icon(
-            _session.danmakuEnabled
-                ? Icons.subtitles_rounded
-                : Icons.subtitles_off_rounded,
-            _session.danmakuEnabled ? '关闭弹幕' : '打开弹幕',
-            () => _change(_session.toggleDanmaku),
-            color: _session.danmakuEnabled ? colors.primary : null,
-          ),
-        ],
-        const Spacer(),
-        _popupTarget(
-          _Popup.quality,
-          _text(
-            _session.qualityLabel,
-            '清晰度',
-            ready && !_session.local ? () => _open(_Popup.quality) : null,
-          ),
-        ),
-        _popupTarget(
-          _Popup.speed,
-          _text(
-            '${_session.speed}x',
-            '倍速',
-            ready ? () => _open(_Popup.speed) : null,
-            bold: true,
-          ),
-        ),
-        if (!widget.touch)
-          _popupTarget(
-            _Popup.volume,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 760;
+        return Row(
+          children: [
+            if (!compact)
             _icon(
-              state.volume == 0
-                  ? Icons.volume_off_rounded
-                  : Icons.volume_up_rounded,
-              state.volume == 0 ? '取消静音' : '静音',
-              () => _session.toggleMute(),
+              Icons.skip_previous_rounded,
+              '上一集',
+              _session.hasPrevious ? () => unawaited(_session.previous()) : null,
             ),
-          ),
-        _icon(Icons.picture_in_picture_alt_rounded, '画中画', null),
-        if (!widget.touch && !widget.fullscreen)
-          _icon(
-            Icons.width_wide_rounded,
-            widget.wide ? '退出宽屏' : '宽屏',
-            widget.onWide,
-            color: widget.wide ? colors.primary : null,
-          ),
-        _icon(
-          widget.fullscreen
-              ? Icons.fullscreen_exit_rounded
-              : Icons.fullscreen_rounded,
-          widget.fullscreen ? '退出全屏' : '全屏',
-          widget.onFullscreen,
-        ),
-      ],
+            _icon(
+              playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              playing ? '暂停' : '播放',
+              ready ? _session.togglePlayback : null,
+              size: 48,
+              iconSize: 30,
+            ),
+            if (constraints.maxWidth >= 420) _icon(
+              Icons.skip_next_rounded,
+              '下一集',
+              _session.hasNext ? () => unawaited(_session.next()) : null,
+            ),
+            const SizedBox(width: 8),
+            if (!compact) Text(
+              '${formatClock(Duration(milliseconds: position.round()))} / ${formatClock(state.duration)}',
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white.withValues(alpha: .86),
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            if (_session.danmakuSupported && constraints.maxWidth >= 360) ...[
+              const SizedBox(width: 4),
+              _icon(
+                _session.danmakuEnabled
+                    ? Icons.subtitles_rounded
+                    : Icons.subtitles_off_rounded,
+                _session.danmakuEnabled ? '关闭弹幕' : '打开弹幕',
+                () => _change(_session.toggleDanmaku),
+                color: _session.danmakuEnabled ? colors.primary : null,
+              ),
+            ],
+            const Spacer(),
+            if (!compact) _popupTarget(
+              _Popup.quality,
+              _text(
+                _session.qualityLabel,
+                '清晰度',
+                ready && !_session.local ? () => _open(_Popup.quality) : null,
+              ),
+            ),
+            _popupTarget(
+              _Popup.speed,
+              _text(
+                '${_session.speed}x',
+                '倍速',
+                ready ? () => _open(_Popup.speed) : null,
+                bold: true,
+              ),
+            ),
+            if (!widget.touch && !compact)
+              _popupTarget(
+                _Popup.volume,
+                _icon(
+                  state.volume == 0
+                      ? Icons.volume_off_rounded
+                      : Icons.volume_up_rounded,
+                  state.volume == 0 ? '取消静音' : '静音',
+                  () => _session.toggleMute(),
+                ),
+              ),
+            if (!compact) _icon(Icons.picture_in_picture_alt_rounded, '画中画', null),
+            if (!widget.touch && !widget.fullscreen)
+              _icon(
+                Icons.width_wide_rounded,
+                widget.wide ? '退出宽屏' : '宽屏',
+                widget.onWide,
+                color: widget.wide ? colors.primary : null,
+              ),
+            _icon(
+              widget.fullscreen
+                  ? Icons.fullscreen_exit_rounded
+                  : Icons.fullscreen_rounded,
+              widget.fullscreen ? '退出全屏' : '全屏',
+              widget.onFullscreen,
+            ),
+          ],
+        );
+      },
     );
   }
 
